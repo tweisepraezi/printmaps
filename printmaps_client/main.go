@@ -37,12 +37,13 @@ Releases:
 - v0.6.0 - 2020/08/03 : template removed
 - v0.7.0 - 2021/06/12 : switch to modules, third-party libs updated, go 1.16.5
 - v0.8.0 - 2025/01/04 : libs updated, go 1.23.4
+- v1.0.0 - 2026/03/30 : revised, libs updated, compiled with go go1.26.1
 
 Author:
 - Klaus Tockloth
 
 Copyright and license:
-- Copyright (c) 2017-2025 Klaus Tockloth
+- Copyright (c) 2017-2026 Klaus Tockloth
 - MIT license
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -71,6 +72,7 @@ Links:
 - http://www.printmaps-osm.de
 */
 
+// main package
 package main
 
 import (
@@ -101,8 +103,8 @@ import (
 // general program info
 var (
 	progName    = os.Args[0]
-	progVersion = "v0.8.0"
-	progDate    = "2025/01/04"
+	progVersion = "v1.0.0"
+	progDate    = "2026/03/30"
 	progPurpose = "Printmaps Command Line Interface Client"
 	progInfo    = "Creates large-sized maps in print quality."
 )
@@ -138,7 +140,7 @@ func init() {
 }
 
 /*
-main starts this program
+main starts this program.
 */
 func main() {
 	_, progName = filepath.Split(progName)
@@ -176,66 +178,67 @@ func main() {
 	action := strings.ToLower(strings.Trim(os.Args[1], " ,"))
 	fmt.Printf("action = %v\n", action)
 
-	if action == "create" {
+	switch action {
+	case "create":
 		checkMapDefinitionFile()
 		create()
-	} else if action == "update" {
+	case "update":
 		checkMapDefinitionFile()
 		checkMapIDFile()
 		update()
-	} else if action == "upload" {
+	case "upload":
 		checkMapDefinitionFile()
 		checkMapIDFile()
 		for _, file := range mapConfig.UploadFiles {
 			upload(file)
 		}
-	} else if action == "state" {
+	case "state":
 		checkMapDefinitionFile()
 		checkMapIDFile()
 		fetch(action)
-	} else if action == "order" {
+	case "order":
 		checkMapDefinitionFile()
 		checkMapIDFile()
 		order()
-	} else if action == "download" {
+	case "download":
 		checkMapDefinitionFile()
 		checkMapIDFile()
 		download()
-	} else if action == "data" {
+	case "data":
 		checkMapDefinitionFile()
 		checkMapIDFile()
 		fetch(action)
-	} else if action == "delete" {
+	case "delete":
 		checkMapDefinitionFile()
 		checkMapIDFile()
-		delete()
-	} else if action == "capabilities" {
+		deleteMap()
+	case "capabilities":
 		fetch(action)
-	} else if action == "unzip" {
+	case "unzip":
 		unzip()
-	} else if action == "passepartout" {
+	case "passepartout":
 		passepartout()
-	} else if action == "rectangle" {
+	case "rectangle":
 		rectangle()
-	} else if action == "cropmarks" {
+	case "cropmarks":
 		cropmarks()
-	} else if action == "latlongrid" {
+	case "latlongrid":
 		latlongrid()
-	} else if action == "utmgrid" {
+	case "utmgrid":
 		utmgrid()
-	} else if action == "latlon2utm" {
+	case "latlon2utm":
 		latlon2utm()
-	} else if action == "utm2latlon" {
+	case "utm2latlon":
 		utm2latlon()
-	} else if action == "bearingline" {
+	case "bearingline":
 		bearingline()
-	} else if action == "latlonline" {
+	case "latlonline":
 		latlonline()
-	} else if action == "utmline" {
+	case "utmline":
 		utmline()
-	} else if action == "runlua" {
+	case "runlua":
 		runlua()
-	} else {
+	default:
 		fmt.Printf("action <%v> not supported\n", action)
 	}
 
@@ -244,7 +247,7 @@ func main() {
 }
 
 /*
-checkMapDefinitionFile checks if the map definition file exists
+checkMapDefinitionFile checks if the map definition file exists.
 */
 func checkMapDefinitionFile() {
 	if _, err := os.Stat(mapDefinitionFile); os.IsNotExist(err) {
@@ -255,7 +258,7 @@ func checkMapDefinitionFile() {
 }
 
 /*
-checkMapIDFile checks if the map id file exists
+checkMapIDFile checks if the map id file exists.
 */
 func checkMapIDFile() {
 	if _, err := os.Stat(mapIDFile); os.IsNotExist(err) {
@@ -267,7 +270,7 @@ func checkMapIDFile() {
 }
 
 /*
-printUsage prints the usage of this program
+printUsage prints the usage of this program.
 */
 func printUsage() {
 	fmt.Printf("\nProgram:\n")
@@ -331,7 +334,7 @@ func printUsage() {
 }
 
 /*
-create creates a new map
+create creates a new map.
 */
 func create() {
 	if mapID != "" {
@@ -366,7 +369,7 @@ func create() {
 	if err != nil {
 		log.Fatalf("error <%v> at http.Do()", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	printResponse(resp, true)
 	printSuccess(resp, http.StatusCreated)
@@ -383,14 +386,14 @@ func create() {
 		log.Fatalf("error <%v> at json.Unmarshal()", err)
 	}
 
-	err = os.WriteFile(mapIDFile, []byte(pmDataResponse.Data.ID), 0666)
+	err = os.WriteFile(mapIDFile, []byte(pmDataResponse.Data.ID), 0600)
 	if err != nil {
 		log.Fatalf("error <%v> at os.WriteFile()", err)
 	}
 }
 
 /*
-update updates an existing map
+update updates an existing map.
 */
 func update() {
 	pmData := pd.PrintmapsData{}
@@ -419,7 +422,7 @@ func update() {
 	if err != nil {
 		log.Fatalf("error <%v> at http.Do()", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	printResponse(resp, true)
 	printSuccess(resp, http.StatusOK)
@@ -450,7 +453,7 @@ func upload(filename string) {
 		log.Fatalf("error <%v> at io.Copy()", err)
 	}
 
-	bodyWriter.Close()
+	_ = bodyWriter.Close()
 
 	req, err := http.NewRequest("POST", requestURL, bodyBuf)
 	if err != nil {
@@ -466,14 +469,14 @@ func upload(filename string) {
 	if err != nil {
 		log.Fatalf("error <%v> at http.Do()", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	printResponse(resp, true)
 	printSuccess(resp, http.StatusCreated)
 }
 
 /*
-order places the map order
+order places the map order.
 */
 func order() {
 	requestURL := mapConfig.ServiceURL + "mapfile"
@@ -493,24 +496,25 @@ func order() {
 	if err != nil {
 		log.Fatalf("error <%v> at http.Do()", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	printResponse(resp, true)
 	printSuccess(resp, http.StatusAccepted)
 }
 
 /*
-fetch fetches information concerning the map or the service
+fetch fetches information concerning the map or the service.
 */
 func fetch(action string) {
 	requestURL := ""
-	if action == "state" {
+	switch action {
+	case "state":
 		requestURL = mapConfig.ServiceURL + "mapstate/" + mapID
-	} else if action == "data" {
+	case "data":
 		requestURL = mapConfig.ServiceURL + "metadata/" + mapID
-	} else if action == "capabilities" {
+	case "capabilities":
 		requestURL = mapConfig.ServiceURL + "capabilities/service"
-	} else {
+	default:
 		log.Fatalf("unexpected action <%v> in function fetch()", action)
 	}
 
@@ -527,7 +531,7 @@ func fetch(action string) {
 	if err != nil {
 		log.Fatalf("error <%v> at http.Do()", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	printResponse(resp, true)
 	printSuccess(resp, http.StatusOK)
@@ -538,7 +542,7 @@ func fetch(action string) {
 }
 
 /*
-download downloads the map
+download downloads the map.
 */
 func download() {
 	filename := "printmaps.zip"
@@ -557,7 +561,7 @@ func download() {
 	if err != nil {
 		log.Fatalf("error <%v> at http.Do()", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	expectedString := strconv.Itoa(http.StatusOK) + " " + http.StatusText(http.StatusOK)
 	if resp.Status == expectedString {
@@ -575,7 +579,7 @@ func download() {
 	if err != nil {
 		log.Fatalf("error <%v> at os.Create(), file = <%s>", err, filename) // nolint
 	}
-	defer file.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
@@ -586,9 +590,9 @@ func download() {
 }
 
 /*
-delete deletes a map (server data and local map ID file)
+deleteMap deletes a map (server data and local map ID file).
 */
-func delete() {
+func deleteMap() {
 	if mapID == "" {
 		fmt.Printf("\nnothing to do, map ID empty\n")
 		return
@@ -612,7 +616,7 @@ func delete() {
 	if err != nil {
 		log.Fatalf("error <%v> at http.Do()", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	printResponse(resp, true)
 	printSuccess(resp, http.StatusNoContent)
@@ -627,7 +631,7 @@ func delete() {
 }
 
 /*
-printRequest prints the http response to stdout
+printRequest prints the http response to stdout.
 */
 func printRequest(req *http.Request, body bool) {
 	dump, err := httputil.DumpRequestOut(req, body)
@@ -646,7 +650,7 @@ func printRequest(req *http.Request, body bool) {
 }
 
 /*
-printResponse prints the http response to stdout
+printResponse prints the http response to stdout.
 */
 func printResponse(resp *http.Response, body bool) {
 	dump, err := httputil.DumpResponse(resp, body)
@@ -665,7 +669,7 @@ func printResponse(resp *http.Response, body bool) {
 }
 
 /*
-printSuccess prints the success / failsure of the request
+printSuccess prints the success / failsure of the request.
 */
 func printSuccess(resp *http.Response, expectedStatus int) {
 	fmt.Printf("\naction result\n")
@@ -682,7 +686,7 @@ func printSuccess(resp *http.Response, expectedStatus int) {
 }
 
 /*
-unzip unzips downloaded map file
+unzip unzips downloaded map file.
 */
 func unzip() {
 	archive := "printmaps.zip"
@@ -692,19 +696,25 @@ func unzip() {
 		log.Fatalf("error <%v> at zip.OpenReader(), archive = <%s>", err, archive)
 	}
 
-	for _, file := range zipReader.Reader.File {
+	for _, file := range zipReader.File {
 		zippedFile, err := file.Open()
 		if err != nil {
 			log.Fatalf("error <%v> at file.Open(), file = <%s>", err, file.Name)
 		}
-		defer zippedFile.Close()
+		defer func() { _ = zippedFile.Close() }()
 
+		if !filepath.IsLocal(file.Name) {
+			//nolint:gocritic
+			log.Fatalf("error: unsafe file path in zip archive: <%s>", file.Name)
+		}
+		// #nosec G305 -- Path traversal ist bereits durch filepath.IsLocal(file.Name) abgesichert
 		extractedFilePath := filepath.Join("./", file.Name)
 		if file.FileInfo().IsDir() {
 			fmt.Println("  Directory created:", extractedFilePath)
 			err = os.MkdirAll(extractedFilePath, file.Mode())
 			if err != nil {
-				log.Fatalf("error <%v> at os.MkdirAll(), path = <%s>", err, extractedFilePath) // nolint
+				//nolint:gocritic
+				log.Fatalf("error <%v> at os.MkdirAll(), path = <%s>", err, extractedFilePath)
 			}
 		} else {
 			fmt.Println("  File extracted:", file.Name)
@@ -712,9 +722,10 @@ func unzip() {
 			if err != nil {
 				log.Fatalf("error <%v> at os.OpenFile(), file = <%s>", err, file.Name)
 			}
-			defer outputFile.Close()
+			defer func() { _ = outputFile.Close() }()
 
-			_, err = io.Copy(outputFile, zippedFile)
+			const maxFileSize = 2 * 1024 * 1024 * 1024 // 2 GB
+			_, err = io.Copy(outputFile, io.LimitReader(zippedFile, maxFileSize))
 			if err != nil {
 				log.Fatalf("error <%v> at io.Copy()", err)
 			}
@@ -723,7 +734,7 @@ func unzip() {
 }
 
 /*
-passepartout calculates well-known-text passe-partout from base values
+passepartout calculates well-known-text passe-partout from base values.
 */
 func passepartout() {
 	if len(os.Args) != 8 {
@@ -802,7 +813,7 @@ func passepartout() {
 }
 
 /*
-rectangle calculates well-known-text rectangle from base values
+rectangle calculates well-known-text rectangle from base values.
 */
 func rectangle() {
 	if len(os.Args) != 6 {
@@ -847,7 +858,7 @@ func rectangle() {
 }
 
 /*
-cropmarks calculates well-known-text crop marks from base values
+cropmarks calculates well-known-text crop marks from base values.
 */
 func cropmarks() {
 	if len(os.Args) != 5 {
@@ -902,7 +913,7 @@ func cropmarks() {
 }
 
 /*
-latlongrid calculates/creates a lat/lon grid and saves it as GeoJSON files
+latlongrid calculates/creates a lat/lon grid and saves it as GeoJSON files.
 */
 func latlongrid() {
 	if len(os.Args) != 7 {
@@ -985,7 +996,7 @@ func latlongrid() {
 
 	// write data ([]byte) to file
 	filename := "latgrid.geojson"
-	if err := os.WriteFile(filename, dataJSON, 0666); err != nil {
+	if err := os.WriteFile(filename, dataJSON, 0600); err != nil {
 		log.Fatalf("\nerror <%v> at os.WriteFile(); file = <%v>\n", err, filename)
 	}
 
@@ -1012,7 +1023,7 @@ func latlongrid() {
 
 	// write data ([]byte) to file
 	filename = "longrid.geojson"
-	if err := os.WriteFile(filename, dataJSON, 0666); err != nil {
+	if err := os.WriteFile(filename, dataJSON, 0600); err != nil {
 		log.Fatalf("\nerror <%v> at os.WriteFile(); file = <%v>\n", err, filename)
 	}
 
@@ -1020,7 +1031,7 @@ func latlongrid() {
 }
 
 /*
-utmgrid calculates/creates a UTM grid and saves it as GeoJSON files
+utmgrid calculates/creates a UTM grid and saves it as GeoJSON files.
 */
 func utmgrid() {
 	if len(os.Args) != 5 {
@@ -1073,11 +1084,12 @@ func utmgrid() {
 		log.Fatalf("\nerror: utm hemispheres (%s / %s) not identical\n", utmMinHemisphere, utmMaxHemisphere)
 	}
 	var northern bool
-	if strings.ToLower(utmMinHemisphere) == "north" {
+	switch strings.ToLower(utmMinHemisphere) {
+	case "north":
 		northern = true
-	} else if strings.ToLower(utmMinHemisphere) == "south" {
+	case "south":
 		northern = false
-	} else {
+	default:
 		log.Fatalf("\nerror: utm hemisphere must be either North or South\n")
 	}
 
@@ -1115,7 +1127,7 @@ func utmgrid() {
 
 	// write data ([]byte) to file
 	filename := fmt.Sprintf("utmlatgrid%.0f.geojson", gridDistance)
-	if err := os.WriteFile(filename, dataJSON, 0666); err != nil {
+	if err := os.WriteFile(filename, dataJSON, 0600); err != nil {
 		log.Fatalf("error <%v> at os.WriteFile(); file = <%v>", err, filename)
 	}
 
@@ -1150,7 +1162,7 @@ func utmgrid() {
 
 	// write data ([]byte) to file
 	filename = fmt.Sprintf("utmlongrid%.0f.geojson", gridDistance)
-	if err := os.WriteFile(filename, dataJSON, 0666); err != nil {
+	if err := os.WriteFile(filename, dataJSON, 0600); err != nil {
 		log.Fatalf("error <%v> at os.WriteFile(); file = <%v>", err, filename)
 	}
 
@@ -1158,7 +1170,7 @@ func utmgrid() {
 }
 
 /*
-latlon2utm converts lat/lon to utm
+latlon2utm converts lat/lon to utm.
 */
 func latlon2utm() {
 	if len(os.Args) != 4 {
@@ -1192,7 +1204,7 @@ func latlon2utm() {
 }
 
 /*
-utm2latlon converts utm to lat/lon
+utm2latlon converts utm to lat/lon.
 */
 func utm2latlon() {
 	if len(os.Args) != 6 {
@@ -1213,11 +1225,12 @@ func utm2latlon() {
 
 	hemisphere := os.Args[3]
 	var northern bool
-	if strings.ToLower(hemisphere) == "north" {
+	switch strings.ToLower(hemisphere) {
+	case "north":
 		northern = true
-	} else if strings.ToLower(hemisphere) == "south" {
+	case "south":
 		northern = false
-	} else {
+	default:
 		log.Fatalf("\nerror: hemisphere must be North or South\n")
 	}
 
@@ -1241,7 +1254,7 @@ func utm2latlon() {
 }
 
 /*
-formatUTM formats UTM data as string
+formatUTM formats UTM data as string.
 */
 func formatUTM(easting float64, northing float64, zoneNumber int, zoneLetterOrHemisphere string) string {
 	result := fmt.Sprintf("%d %s %.0f %.0f", zoneNumber, zoneLetterOrHemisphere, easting, northing)
@@ -1257,7 +1270,7 @@ func formatLatLon(lat float64, lon float64) string {
 }
 
 /*
-latlonline creates a geographic line and saves it as GeoJSON files
+latlonline creates a geographic line and saves it as GeoJSON files.
 */
 func latlonline() {
 	if len(os.Args) != 8 {
@@ -1311,7 +1324,7 @@ func latlonline() {
 
 	// write data ([]byte) to file
 	filename := os.Args[7] + ".geojson"
-	if err := os.WriteFile(filename, dataJSON, 0666); err != nil {
+	if err := os.WriteFile(filename, dataJSON, 0600); err != nil {
 		log.Fatalf("\nerror <%v> at os.WriteFile(); file = <%v>\n", err, filename)
 	}
 
@@ -1321,7 +1334,7 @@ func latlonline() {
 }
 
 /*
-utmline creates a geographic line and saves it as GeoJSON files
+utmline creates a geographic line and saves it as GeoJSON files.
 */
 func utmline() {
 	if len(os.Args) != 6 {
@@ -1400,7 +1413,7 @@ func utmline() {
 
 	// write data ([]byte) to file
 	filename := os.Args[5] + ".geojson"
-	if err := os.WriteFile(filename, dataJSON, 0666); err != nil {
+	if err := os.WriteFile(filename, dataJSON, 0600); err != nil {
 		log.Fatalf("\nerror <%v> at os.WriteFile(); file = <%v>\n", err, filename)
 	}
 
@@ -1410,7 +1423,7 @@ func utmline() {
 }
 
 /*
-bearingline calculates/creates a geographic line and saves it as GeoJSON files
+bearingline calculates/creates a geographic line and saves it as GeoJSON files.
 */
 func bearingline() {
 	if len(os.Args) != 8 {
@@ -1472,7 +1485,7 @@ func bearingline() {
 
 	// write data ([]byte) to file
 	filename := os.Args[7] + ".geojson"
-	if err := os.WriteFile(filename, dataJSON, 0666); err != nil {
+	if err := os.WriteFile(filename, dataJSON, 0600); err != nil {
 		log.Fatalf("\nerror <%v> at os.WriteFile(); file = <%v>\n", err, filename)
 	}
 
@@ -1482,7 +1495,7 @@ func bearingline() {
 }
 
 /*
-runlua runs an user supplied lua script
+runlua runs an user supplied lua script.
 */
 func runlua() {
 	if len(os.Args) != 3 {
@@ -1509,7 +1522,7 @@ func runlua() {
 }
 
 /*
-dumpData dumps an arbitrary data object
+dumpData dumps an arbitrary data object.
 */
 func dumpData(writer io.Writer, objectname string, object interface{}) { // nolint
 	if _, err := fmt.Fprintf(writer, "---------- %s ----------\n%s\n", objectname, spew.Sdump(object)); err != nil {

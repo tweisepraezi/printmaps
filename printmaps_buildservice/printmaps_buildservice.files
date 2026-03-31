@@ -1,0 +1,16 @@
+# source files (primary)
+/Users/klaustockloth/go/src/printmaps/printmaps_buildservice/main.go
+/Users/klaustockloth/go/src/printmaps/printmaps_buildservice/build.go
+/Users/klaustockloth/go/src/printmaps/printmaps_buildservice/utils.go
+
+# source files (dependencies)
+/Users/klaustockloth/go/src/printmaps/pd/data.go
+
+# build file
+/Users/klaustockloth/go/src/printmaps/printmaps_buildservice/build-binaries.sh
+
+# configuration
+/Users/klaustockloth/go/src/printmaps/printmaps_buildservice/printmaps_buildservice.yaml
+
+# readme
+/Users/klaustockloth/go/src/printmaps/printmaps_buildservice/README.md

@@ -1,5 +1,3 @@
-// build map
-
 /*
   DIN  |  size in mm   | pixel at 300ppi | pixel at 72ppi
 -------|---------------|-----------------|---------------
@@ -208,7 +206,7 @@ func createUserMapnikXML(pmData pd.PrintmapsData, mapnikData MapnikData) (string
 
 	// create result file
 	filename = filepath.Join(mapnikXMLPath, pmData.Data.ID+"-"+mapnikXMLFile)
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0600)
 	if err != nil {
 		message := fmt.Sprintf("error <%v> at os.OpenFile(); file = <%s>", err, filename)
 		log.Printf("unexpected error <%s> in createUserMapnikXML()", err)
@@ -262,7 +260,7 @@ func slurpFile(filename string) ([]string, error) {
 	if err != nil {
 		return lines, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
@@ -282,19 +280,19 @@ func createRasterMap(lineBuffer []string, mapnikData MapnikData, pmData pd.Print
 	rasterName := "raster10"
 	BoxProjection := mapnikData.BoxProjection
 
-	lineBuffer = append(lineBuffer, fmt.Sprintf("\n"))
+	lineBuffer = append(lineBuffer, "\n")
 	lineBuffer = append(lineBuffer, fmt.Sprintf("<Style name='%s'>\n", rasterName))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("  <Rule>\n"))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("    <LineSymbolizer stroke='grey' stroke-width='1' />\n"))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("  </Rule>\n"))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("</Style>\n"))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("\n"))
+	lineBuffer = append(lineBuffer, "  <Rule>\n")
+	lineBuffer = append(lineBuffer, "    <LineSymbolizer stroke='grey' stroke-width='1' />\n")
+	lineBuffer = append(lineBuffer, "  </Rule>\n")
+	lineBuffer = append(lineBuffer, "</Style>\n")
+	lineBuffer = append(lineBuffer, "\n")
 	lineBuffer = append(lineBuffer, fmt.Sprintf("<Layer name='%s' srs='+init=epsg:%s'>\n", rasterName, pmData.Data.Attributes.Projection))
 	lineBuffer = append(lineBuffer, fmt.Sprintf("  <StyleName>%s</StyleName>\n", rasterName))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("  <Datasource>\n"))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("    <Parameter name='type'>csv</Parameter>\n"))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("    <Parameter name='inline'>\n"))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("id|name|wkt\n"))
+	lineBuffer = append(lineBuffer, "  <Datasource>\n")
+	lineBuffer = append(lineBuffer, "    <Parameter name='type'>csv</Parameter>\n")
+	lineBuffer = append(lineBuffer, "    <Parameter name='inline'>\n")
+	lineBuffer = append(lineBuffer, "id|name|wkt\n")
 
 	xInterval := (BoxProjection.XMax - BoxProjection.XMin) / 10.0
 	yInterval := (BoxProjection.YMax - BoxProjection.YMin) / 10.0
@@ -314,9 +312,9 @@ func createRasterMap(lineBuffer []string, mapnikData MapnikData, pmData pd.Print
 		lineBuffer = append(lineBuffer, fmt.Sprintf("%d|vertical|LINESTRING(%f %f, %f %f)\n", index, verticalLowerX, verticalLowerY, verticalUpperX, verticalUpperY))
 	}
 
-	lineBuffer = append(lineBuffer, fmt.Sprintf("    </Parameter>\n"))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("  </Datasource>\n"))
-	lineBuffer = append(lineBuffer, fmt.Sprintf("</Layer>\n"))
+	lineBuffer = append(lineBuffer, "    </Parameter>\n")
+	lineBuffer = append(lineBuffer, "  </Datasource>\n")
+	lineBuffer = append(lineBuffer, "</Layer>\n")
 
 	return lineBuffer
 }
@@ -325,15 +323,20 @@ func createRasterMap(lineBuffer []string, mapnikData MapnikData, pmData pd.Print
 createUserObjects creates the user defined data elementes.
 
 OGR:
-  <Parameter name="type">ogr</Parameter>
-  <Parameter name="file">test_point_line.gpx</Parameter>
-  <Parameter name="layer">waypoints</Parameter>
+
+	<Parameter name="type">ogr</Parameter>
+	<Parameter name="file">test_point_line.gpx</Parameter>
+	<Parameter name="layer">waypoints</Parameter>
+
 ShapeFile:
-  <Parameter name="type">shape</Parameter>
-  <Parameter name="file">/path/to/your/shapefile.shp</Parameter>
+
+	<Parameter name="type">shape</Parameter>
+	<Parameter name="file">/path/to/your/shapefile.shp</Parameter>
+
 GDAL:
-  <Parameter name="type">gdal</Parameter>
-  <Parameter name="file">/path/to/your/data/raster.tiff</Parameter>
+
+	<Parameter name="type">gdal</Parameter>
+	<Parameter name="file">/path/to/your/data/raster.tiff</Parameter>
 
 data object has filled elements:
 - Style
@@ -351,43 +354,43 @@ func createUserObjects(lineBuffer []string, pmData pd.PrintmapsData, mapnikData 
 		if userObject.WellKnownText != "" {
 			// item object
 			objectName := fmt.Sprintf("userobject-%d", index)
-			lineBuffer = append(lineBuffer, fmt.Sprintf("\n"))
+			lineBuffer = append(lineBuffer, "\n")
 			lineBuffer = append(lineBuffer, fmt.Sprintf("<Style name='%s'>\n", objectName))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("  <Rule>\n"))
+			lineBuffer = append(lineBuffer, "  <Rule>\n")
 			lineBuffer = append(lineBuffer, fmt.Sprintf("    %s\n", userObject.Style))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("  </Rule>\n"))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("</Style>\n"))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("\n"))
+			lineBuffer = append(lineBuffer, "  </Rule>\n")
+			lineBuffer = append(lineBuffer, "</Style>\n")
+			lineBuffer = append(lineBuffer, "\n")
 			lineBuffer = append(lineBuffer, fmt.Sprintf("<Layer name='%s' srs='+init=epsg:%s'>\n", objectName, pmData.Data.Attributes.Projection))
 			lineBuffer = append(lineBuffer, fmt.Sprintf("  <StyleName>%s</StyleName>\n", objectName))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("  <Datasource>\n"))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("    <Parameter name='type'>csv</Parameter>\n"))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("    <Parameter name='inline'>\n"))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("id|name|wkt\n"))
+			lineBuffer = append(lineBuffer, "  <Datasource>\n")
+			lineBuffer = append(lineBuffer, "    <Parameter name='type'>csv</Parameter>\n")
+			lineBuffer = append(lineBuffer, "    <Parameter name='inline'>\n")
+			lineBuffer = append(lineBuffer, "id|name|wkt\n")
 			lineBuffer = append(lineBuffer, fmt.Sprintf("1|%s|%s\n", objectName, transformWellKnownText(userObject.WellKnownText, mapnikData, width, height)))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("    </Parameter>\n"))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("  </Datasource>\n"))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("</Layer>\n"))
+			lineBuffer = append(lineBuffer, "    </Parameter>\n")
+			lineBuffer = append(lineBuffer, "  </Datasource>\n")
+			lineBuffer = append(lineBuffer, "</Layer>\n")
 		} else {
 			// data object
 			objectName := fmt.Sprintf("userobject-%d", index)
-			lineBuffer = append(lineBuffer, fmt.Sprintf("\n"))
+			lineBuffer = append(lineBuffer, "\n")
 			lineBuffer = append(lineBuffer, fmt.Sprintf("<Style name='%s'>\n", objectName))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("  <Rule>\n"))
+			lineBuffer = append(lineBuffer, "  <Rule>\n")
 			lineBuffer = append(lineBuffer, fmt.Sprintf("    %s\n", userObject.Style))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("  </Rule>\n"))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("</Style>\n"))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("\n"))
+			lineBuffer = append(lineBuffer, "  </Rule>\n")
+			lineBuffer = append(lineBuffer, "</Style>\n")
+			lineBuffer = append(lineBuffer, "\n")
 			lineBuffer = append(lineBuffer, fmt.Sprintf("<Layer name='%s' srs='%s'>\n", objectName, userObject.SRS))
 			lineBuffer = append(lineBuffer, fmt.Sprintf("  <StyleName>%s</StyleName>\n", objectName))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("  <Datasource>\n"))
+			lineBuffer = append(lineBuffer, "  <Datasource>\n")
 			lineBuffer = append(lineBuffer, fmt.Sprintf("    <Parameter name='type'>%s</Parameter>\n", userObject.Type))
 			lineBuffer = append(lineBuffer, fmt.Sprintf("    <Parameter name='file'>%s</Parameter>\n", userObject.File))
 			if userObject.Layer != "" {
 				lineBuffer = append(lineBuffer, fmt.Sprintf("    <Parameter name='layer'>%s</Parameter>\n", userObject.Layer))
 			}
-			lineBuffer = append(lineBuffer, fmt.Sprintf("  </Datasource>\n"))
-			lineBuffer = append(lineBuffer, fmt.Sprintf("</Layer>\n"))
+			lineBuffer = append(lineBuffer, "  </Datasource>\n")
+			lineBuffer = append(lineBuffer, "</Layer>\n")
 		}
 	}
 
@@ -485,7 +488,7 @@ func parseMapnikData(commandOutput []byte, mapnikData *MapnikData) error {
 	}
 
 	if i == -1 {
-		message := fmt.Sprintf("expected output not found")
+		message := "expected output not found"
 		return errors.New(message)
 	}
 

@@ -19,7 +19,3 @@ die Nutzung des CLI-Clients. Damit läßt sich in kurzer Zeit eine jederzeit rep
 ### Workflow: Karte verbessern
 
 ![](workflow-update.png)
-
----
-
-to be done - english translation

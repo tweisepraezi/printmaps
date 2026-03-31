@@ -6,25 +6,26 @@ Description:
 - Build service to build large printable maps.
 
 Releases:
-- 0.1.0 - 2017/05/23 : initial release (beta version)
-- 0.1.1 - 2017/05/26 : security enhancements
-- 0.1.2 - 2017/08/08 : more output for unsuccessful commands
-- 0.1.3 - 2017/08/10 : bug concerning parallel Chdir() fixed
-- 0.1.4 - 2017/08/17 : workaround for rare failure of os.Rename() (not working)
-- 0.1.5 - 2017/08/28 : style without layers - misleading log message fixed
-- 0.2.0 - 2018/12/01 : new projection option in mapnik driver
+- v0.1.0 - 2017/05/23 : initial release (beta version)
+- v0.1.1 - 2017/05/26 : security enhancements
+- v0.1.2 - 2017/08/08 : more output for unsuccessful commands
+- v0.1.3 - 2017/08/10 : bug concerning parallel Chdir() fixed
+- v0.1.4 - 2017/08/17 : workaround for rare failure of os.Rename() (not working)
+- v0.1.5 - 2017/08/28 : style without layers - misleading log message fixed
+- v0.2.0 - 2018/12/01 : new projection option in mapnik driver
                        data structures modified (to allow more flexibility)
                        some changes are not compatible with initial release
-- 0.2.1 - 2018/12/10 : pdf meta data modification removed
+- v0.2.1 - 2018/12/10 : pdf meta data modification removed
                        refactoring (data.go as package)
-- 0.3.0 - 2021/06/12 : switch to modules, third-party libs updated, go 1.16.5
-- 0.3.1 - 2022/06/12 : compiled with go 1.18.3, some non-functional modifications
+- v0.3.0 - 2021/06/12 : switch to modules, third-party libs updated, go 1.16.5
+- v0.3.1 - 2022/06/12 : compiled with go 1.18.3, some non-functional modifications
+- v1.0.0 - 2026/03/30 : revised, libs updated, compiled with go go1.26.1
 
 Author:
 - Klaus Tockloth
 
 Copyright and license:
-- Copyright (c) 2017-2022 Klaus Tockloth
+- Copyright (c) 2017-2026 Klaus Tockloth
 - MIT license
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -68,12 +69,12 @@ Links:
 - http://www.printmaps-osm.de
 */
 
+// main package
 package main
 
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -88,8 +89,8 @@ import (
 // general program info
 var (
 	progName    = os.Args[0]
-	progVersion = "0.3.1"
-	progDate    = "2022/06/12"
+	progVersion = "v1.0.0"
+	progDate    = "2026/03/30"
 	progPurpose = "Printmaps Buildservice"
 	progInfo    = "Build service to build large printable maps."
 )
@@ -142,20 +143,20 @@ func main() {
 	if len(os.Args) > 1 {
 		configfile = os.Args[1]
 	}
-	source, err := ioutil.ReadFile(configfile)
+	source, err := os.ReadFile(configfile)
 	if err != nil {
-		log.Fatalf("fatal error <%v> at ioutil.ReadFile(), file = <%s>", err, configfile)
+		log.Fatalf("fatal error <%v> at os.ReadFile(), file = <%s>", err, configfile)
 	}
 
 	if err = yaml.Unmarshal(source, &config); err != nil {
 		log.Fatalf("fatal error <%v> at yaml.Unmarshal()", err)
 	}
 
-	logfile, err := os.OpenFile(config.Logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	logfile, err := os.OpenFile(config.Logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		log.Fatalf("fatal error <%v> at os.OpenFile(), file = <%v>", err, config.Logfile)
 	}
-	defer logfile.Close()
+	defer func() { _ = logfile.Close() }()
 	log.SetOutput(logfile)
 
 	// print start message to stdout
@@ -180,6 +181,7 @@ func main() {
 
 	// change into working directory
 	if err = os.Chdir(config.Workdir); err != nil {
+		//nolint:gocritic
 		log.Fatalf("fatal error <%v> at os.Chdir(), dir = <%s>", err, config.Workdir)
 	}
 
@@ -260,9 +262,9 @@ buildMapMaster builds a map (master).
 */
 func buildMapMaster(nextOrder string, chanOut chan<- struct{}) {
 	// create temp directory
-	tempdir, err := ioutil.TempDir(pd.PathWorkdir, "printmaps_tempdir_")
+	tempdir, err := os.MkdirTemp(pd.PathWorkdir, "printmaps_tempdir_")
 	if err != nil {
-		log.Fatalf("fatal error <%v> at ioutil.TempDir()", err)
+		log.Fatalf("fatal error <%v> at os.MkdirTemp", err)
 	}
 
 	// move next order file into temp directory
@@ -343,7 +345,7 @@ func buildMap(tempdir string, order string) {
 	if err := buildMapnikMap(tempdir, pmData, &pmState); err != nil {
 		bResult.BuildSuccessful = "no"
 		bResult.BuildMessage = err.Error()
-		setBuildResult(pmState, bResult)
+		_ = setBuildResult(pmState, bResult)
 		// log.Printf("error <%v> at buildMapnikMap()", err)
 		// log.Printf("pmData = %v", dumpPrintmapsData(pmData))
 		// log.Printf("pmState = %v", dumpPrintmapsState(pmState))
@@ -358,7 +360,7 @@ func buildMap(tempdir string, order string) {
 	if err != nil {
 		bResult.BuildSuccessful = "no"
 		bResult.BuildMessage = "error zipping map file"
-		setBuildResult(pmState, bResult)
+		_ = setBuildResult(pmState, bResult)
 		log.Printf("error <%v> at runCommand()", err)
 		// log.Printf("pmData = %v", dumpPrintmapsData(pmData))
 		// log.Printf("pmState = %v", dumpPrintmapsState(pmState))
@@ -370,7 +372,7 @@ func buildMap(tempdir string, order string) {
 	if err := os.Rename(zipfile, destination); err != nil {
 		bResult.BuildSuccessful = "no"
 		bResult.BuildMessage = "error moving zipped map to download location"
-		setBuildResult(pmState, bResult)
+		_ = setBuildResult(pmState, bResult)
 		log.Printf("error <%v> at os.Rename(), source = <%v>, destination = <%v>", err, zipfile, destination)
 		// log.Printf("pmData = %v", dumpPrintmapsData(pmData))
 		// log.Printf("pmState = %v", dumpPrintmapsState(pmState))
@@ -380,7 +382,7 @@ func buildMap(tempdir string, order string) {
 	// everything ok
 	bResult.BuildSuccessful = "yes"
 	bResult.BuildMessage = "map build successful"
-	setBuildResult(pmState, bResult)
+	_ = setBuildResult(pmState, bResult)
 }
 
 /*
@@ -415,6 +417,7 @@ func dumpPrintmapsData(pmData pd.PrintmapsData) string {
 /*
 dumpPrintmapsState dumps (formats) a PrintmapsState object.
 */
+/*
 func dumpPrintmapsState(pmState pd.PrintmapsState) string {
 	dump, err := json.MarshalIndent(pmState, pd.IndentPrefix, pd.IndexString)
 	if err != nil {
@@ -424,14 +427,15 @@ func dumpPrintmapsState(pmState pd.PrintmapsState) string {
 	}
 	return string(dump)
 }
+*/
 
 /*
 readOrder reads the map order (meta) data.
 */
 func readOrder(pmData *pd.PrintmapsData, file string) error {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
-		log.Printf("error <%v> at ioutil.ReadFile(), file = <%s>", err, file)
+		log.Printf("error <%v> at os.ReadFile(), file = <%s>", err, file)
 		return err
 	}
 

@@ -1,0 +1,23 @@
+# source files (primary)
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/main.go
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/capa.go
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/create.go
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/delete.go
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/fetch.go
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/update.go
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/upload.go
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/utils.go
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/verify.go
+
+# source files (dependencies)
+/Users/klaustockloth/go/src/printmaps/pd/data.go
+
+# build file
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/build-binaries.sh
+
+# configuration
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/printmaps_webservice_capabilities.json
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/printmaps_webservice.yaml
+
+# readme
+/Users/klaustockloth/go/src/printmaps/printmaps_webservice/README.md

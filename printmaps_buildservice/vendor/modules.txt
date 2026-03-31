@@ -1,0 +1,7 @@
+# github.com/printmaps/printmaps/pd v1.0.0 => ../pd
+## explicit; go 1.26
+github.com/printmaps/printmaps/pd
+# gopkg.in/yaml.v2 v2.4.0
+## explicit; go 1.15
+gopkg.in/yaml.v2
+# github.com/printmaps/printmaps/pd => ../pd

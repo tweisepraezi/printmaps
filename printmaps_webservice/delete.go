@@ -19,7 +19,7 @@ import (
 /*
 deleteMap deletes all data for a given map ID.
 */
-func deleteMap(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+func deleteMap(writer http.ResponseWriter, _ *http.Request, params httprouter.Params) {
 	var pmData pd.PrintmapsData
 	var pmErrorList pd.PrintmapsErrorList
 
@@ -75,6 +75,6 @@ func deleteMap(writer http.ResponseWriter, request *http.Request, params httprou
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusBadRequest)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	}
 }

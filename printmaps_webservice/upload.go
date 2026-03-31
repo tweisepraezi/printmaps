@@ -12,8 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/printmaps/printmaps/pd"
@@ -56,57 +56,56 @@ func uploadUserdata(writer http.ResponseWriter, request *http.Request, params ht
 
 	userfileName := ""
 	userfileSize := int64(-1)
+	filelimit := int64(224 * 1024 * 1024)
 
 	if len(pmErrorList.Errors) == 0 {
+		// Limit the size of the request body to prevent disk exhaustion (DoS).
+		// An additional 1 MB (1<<20) overhead is granted for multipart form boundaries and headers.
+		request.Body = http.MaxBytesReader(writer, request.Body, filelimit+(1<<20))
+
 		// input file
 		file, header, err := request.FormFile("file")
 		if err != nil {
-			fmt.Fprintln(writer, err)
-			return
-		}
-		defer file.Close()
-		_, userfileName = filepath.Split(header.Filename)
-
-		filename := filepath.Join(pd.PathWorkdir, pd.PathMaps, pmData.Data.ID, userfileName)
-		out, err := os.Create(filename)
-		if err != nil {
-			message := fmt.Sprintf("error <%v> at os.Create(), file = <%s>", err, filename)
-			http.Error(writer, message, http.StatusInternalServerError)
-			log.Printf("Response %d - %s", http.StatusInternalServerError, message)
-			return
-		}
-
-		// write content from POST to file
-		bytesWritten, err := io.Copy(out, file)
-		out.Close()
-		if err != nil {
-			message := fmt.Sprintf("error <%v> at io.Copy(), file = <%s>", err, filename)
-			http.Error(writer, message, http.StatusInternalServerError)
-			log.Printf("Response %d - %s", http.StatusInternalServerError, message)
-			return
-		}
-		userfileSize = bytesWritten
-
-		filelimit := int64(224 * 1024 * 1024)
-		removeUserfile := false
-		if userfileSize > filelimit {
-			log.Printf("user file <%s> (%d bytes) exceeds upload limit", filename, userfileSize)
-			message := fmt.Sprintf("max upload size = %d bytes", filelimit)
-			appendError(&pmErrorList, "7001", message, id)
-			removeUserfile = true
+			message := fmt.Sprintf("upload failed or exceeded max upload size (%d bytes): %v", filelimit, err)
+			log.Printf("uploadUserdata(): %s", message)
+			appendError(&pmErrorList, "7001", fmt.Sprintf("max upload size = %d bytes", filelimit), id)
 		} else {
-			// verify security of uploaded file
-			err := verifyUploadedFile(filename)
+			defer func() { _ = file.Close() }()
+
+			_, userfileName = filepath.Split(header.Filename)
+
+			filename := filepath.Join(pd.PathWorkdir, pd.PathMaps, pmData.Data.ID, userfileName)
+			out, err := os.Create(filename)
 			if err != nil {
-				log.Printf("insecure user file <%s> rejected", err)
-				appendError(&pmErrorList, "7002", "only data or image files are accepted", id)
-				removeUserfile = true
+				message := fmt.Sprintf("error <%v> at os.Create(), file = <%s>", err, filename)
+				http.Error(writer, message, http.StatusInternalServerError)
+				log.Printf("Response %d - %s", http.StatusInternalServerError, message)
+				return
 			}
-		}
-		if removeUserfile {
-			err := os.Remove(filename)
+
+			// write content from POST to file
+			bytesWritten, err := io.Copy(out, file)
+			_ = out.Close()
+
 			if err != nil {
-				log.Printf("unexpected error <%s> os.Remove(), file = <%s>", err, filename)
+				message := fmt.Sprintf("error <%v> at io.Copy(), file = <%s> (exceeds max size?)", err, filename)
+				log.Printf("uploadUserdata(): %s", message)
+				// Remove partially written file
+				_ = os.Remove(filename)
+				appendError(&pmErrorList, "7001", fmt.Sprintf("max upload size = %d bytes", filelimit), id)
+			} else {
+				userfileSize = bytesWritten
+
+				// verify security of uploaded file
+				err := verifyUploadedFileMimetype(filename)
+				if err != nil {
+					log.Printf("insecure user file <%s> rejected: %v", filename, err)
+					appendError(&pmErrorList, "7002", "only data or image files are accepted", id)
+					errRemove := os.Remove(filename)
+					if errRemove != nil {
+						log.Printf("unexpected error <%s> os.Remove(), file = <%s>", errRemove, filename)
+					}
+				}
 			}
 		}
 	}
@@ -115,7 +114,7 @@ func uploadUserdata(writer http.ResponseWriter, request *http.Request, params ht
 		// upload request ok (user data file created)
 		writer.WriteHeader(http.StatusCreated)
 		message := fmt.Sprintf("file <%s, %d bytes> successfully uploaded", userfileName, userfileSize)
-		writer.Write([]byte(message))
+		_, _ = writer.Write([]byte(message))
 		log.Printf("uploadUserdata(): %s", message)
 	} else {
 		// request not ok, response with error list
@@ -129,28 +128,24 @@ func uploadUserdata(writer http.ResponseWriter, request *http.Request, params ht
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusBadRequest)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	}
 }
 
 /*
-verifyUploadedFile verifies if a file is 'secure' (using linux file command).
+verifyUploadedFileMimetype verifies if a file is 'secure'.
 */
-func verifyUploadedFile(filename string) error {
-	command := fmt.Sprintf("file %s", filename)
-	commandExitStatus, commandOutput, err := runCommand(command)
+func verifyUploadedFileMimetype(filename string) error {
+	mtype, err := mimetype.DetectFile(filename)
 	if err != nil {
-		log.Printf("error <%v> at runCommand()", err)
-		log.Printf("command = <%v>", command)
-		log.Printf("command exit status = <%d>", commandExitStatus)
-		if len(commandOutput) > 0 {
-			log.Printf("command output (stdout, stderr) =\n%s", string(commandOutput))
+		return fmt.Errorf("error detecting mimetype: %w", err)
+	}
+
+	for m := mtype; m != nil; m = m.Parent() {
+		if m.String() == "application/x-executable" || m.String() == "application/x-mach-binary" || m.String() == "application/x-dosexec" {
+			return errors.New("executable files are not permitted")
 		}
-		message := fmt.Sprintf("error <%v> at runCommand()", err)
-		return errors.New(message)
 	}
-	if strings.Contains(string(commandOutput), "executable") {
-		return errors.New(strings.TrimSpace(string(commandOutput)))
-	}
+
 	return nil
 }

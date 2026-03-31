@@ -1,18 +1,13 @@
-// utils and helper
-
 package main
 
 import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	pip "github.com/JamesMilnerUK/pip-go"
 	"github.com/printmaps/printmaps/pd"
@@ -26,7 +21,7 @@ func createMapOrder(pmData pd.PrintmapsData) error {
 
 	// create directory if necessary
 	if _, err := os.Stat(pd.PathOrders); os.IsNotExist(err) {
-		if err := os.MkdirAll(pd.PathOrders, 0755); err != nil {
+		if err := os.MkdirAll(pd.PathOrders, 0750); err != nil {
 			log.Printf("error <%v> at os.MkdirAll(), path = <%s>", err, pd.PathOrders)
 			return err
 		}
@@ -38,7 +33,7 @@ func createMapOrder(pmData pd.PrintmapsData) error {
 		return err
 	}
 
-	return ioutil.WriteFile(file, data, 0666)
+	return os.WriteFile(file, data, 0600)
 }
 
 /*
@@ -95,7 +90,7 @@ func slurpFile(filename string) ([]string, error) {
 	if err != nil {
 		return lines, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
@@ -112,9 +107,9 @@ func slurpFile(filename string) ([]string, error) {
 readCapafile reads the capabilities file (json format).
 */
 func readCapafile(filename string, pmFeature *PrintmapsFeature) error {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
-		log.Printf("error <%v> at ioutil.ReadFile(), file = <%s>", err, filename)
+		log.Printf("error <%v> at os.ReadFile(), file = <%s>", err, filename)
 		return err
 	}
 
@@ -125,41 +120,4 @@ func readCapafile(filename string, pmFeature *PrintmapsFeature) error {
 	}
 
 	return nil
-}
-
-/*
-runCommand runs a command / program.
-*/
-func runCommand(command string) (commandExitStatus int, commandOutput []byte, err error) {
-	program := "/bin/bash"
-	args := []string{"-c", command}
-	cmd := exec.Command(program, args...)
-
-	commandOutput, err = cmd.CombinedOutput()
-
-	var waitStatus syscall.WaitStatus
-	if err != nil {
-		// command was not successful
-		if exitError, ok := err.(*exec.ExitError); ok {
-			// command fails because of an unsuccessful exit code
-			waitStatus = exitError.Sys().(syscall.WaitStatus)
-			log.Printf("command exit code = <%d>", waitStatus.ExitStatus())
-		}
-		log.Printf("error <%v> at cmd.CombinedOutput()", err)
-		log.Printf("command (not successful) = <%s>", strings.Join(cmd.Args, " "))
-		if len(commandOutput) > 0 {
-			log.Printf("command output (stdout, stderr) =\n%s", string(commandOutput))
-		}
-	} else {
-		// command was successful
-		waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
-		// log.Printf("command (successful) = <%s>", strings.Join(cmd.Args, " "))
-		// log.Printf("command exit code = <%d>", waitStatus.ExitStatus())
-		// if len(commandOutput) > 0 {
-		// 	log.Printf("command output (stdout, stderr) =\n%s", string(commandOutput))
-		// }
-	}
-
-	commandExitStatus = waitStatus.ExitStatus()
-	return
 }

@@ -23,13 +23,14 @@ Releases:
 - v0.8.0 - 2021/06/12 : switch to modules, third-party libs updated, go 1.16.5,
                         Content-Type and Accept header verification modified
 - v0.9.0 - 2022/06/12 : Get 'uidata' added, compiled with go 1.18.3, some non-functional modifications
-- v0.10.0 - 2023/05/21 : log client IP (in order to block malicious clients), compiled with go 1.20.4
+- v0.10.0  2023/05/21 : log client IP (in order to block malicious clients), compiled with go 1.20.4
+- v1.0.0 - 2026/03/30 : revised, libs updated, compiled with go go1.26.1
 
 Author:
 - Klaus Tockloth
 
 Copyright and license:
-- Copyright (c) 2017-2022 Klaus Tockloth
+- Copyright (c) 2017-2026 Klaus Tockloth
 - MIT license
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -107,12 +108,12 @@ Links:
 - http://jsonapi.org
 */
 
+// main package
 package main
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -146,8 +147,8 @@ var config Config
 // general program info
 var (
 	progName    = os.Args[0]
-	progVersion = "v0.10.0"
-	progDate    = "2023/05/21"
+	progVersion = "v1.0.0"
+	progDate    = "2026/03/30"
 	progPurpose = "Printmaps Webservice"
 	progInfo    = "Webservice to build large printable maps based on OSM data."
 )
@@ -223,20 +224,21 @@ func main() {
 	if len(os.Args) > 1 {
 		configfile = os.Args[1]
 	}
-	source, err := ioutil.ReadFile(configfile)
+	source, err := os.ReadFile(configfile)
 	if err != nil {
-		log.Fatalf("fatal error <%v> at ioutil.ReadFile(), file = <%s>", err, configfile)
+		log.Fatalf("fatal error <%v> at os.ReadFile(), file = <%s>", err, configfile)
 	}
 
 	if err = yaml.Unmarshal(source, &config); err != nil {
 		log.Fatalf("fatal error <%v> at yaml.Unmarshal()", err)
 	}
 
-	logfile, err := os.OpenFile(config.Logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	logfile, err := os.OpenFile(config.Logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		log.Fatalf("fatal error <%v> at os.OpenFile(), file = <%v>", err, config.Logfile)
 	}
-	defer logfile.Close()
+	defer func() { _ = logfile.Close() }()
+
 	log.SetOutput(logfile)
 
 	// print start message to stdout
@@ -257,6 +259,7 @@ func main() {
 
 	// change into working directory
 	if err = os.Chdir(config.Workdir); err != nil {
+		//nolint:gocritic
 		log.Fatalf("fatal error <%v> at os.Chdir(), dir = <%s>", err, config.Workdir)
 	}
 
@@ -364,6 +367,7 @@ func main() {
 	}
 
 	log.Printf("%s (%s) gracefully shut down.", progName, progPurpose)
+	_ = logfile.Close()
 }
 
 /*
@@ -387,11 +391,11 @@ func middlewareHandler(nextFunction httprouter.Handle) httprouter.Handle {
 		}
 
 		// copy everything from response recorder to actual response writer
-		for key, value := range responseRecorder.HeaderMap {
+		for key, value := range responseRecorder.Result().Header {
 			writer.Header()[key] = value
 		}
 		writer.WriteHeader(responseRecorder.Code)
-		responseRecorder.Body.WriteTo(writer)
+		_, _ = responseRecorder.Body.WriteTo(writer)
 	}
 }
 
@@ -411,7 +415,7 @@ dumpResponse dumps a (recorded) http response.
 */
 func dumpResponse(responseRecorder *httptest.ResponseRecorder) string {
 	dump := fmt.Sprintf("%v (%s)\n", responseRecorder.Code, http.StatusText(responseRecorder.Code))
-	for key, value := range responseRecorder.HeaderMap {
+	for key, value := range responseRecorder.Result().Header {
 		dump += fmt.Sprintf("%s %s\n", key, value)
 	}
 	dump += fmt.Sprintf("\n%s", responseRecorder.Body.String())
@@ -421,16 +425,16 @@ func dumpResponse(responseRecorder *httptest.ResponseRecorder) string {
 /*
 showMaintenance shows the maintenance page and sends status code 503 (Service Unavailable).
 */
-func showMaintenance(writer http.ResponseWriter, request *http.Request, _ httprouter.Params) {
-	content, err := ioutil.ReadFile(config.Maintenancefile)
+func showMaintenance(writer http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	content, err := os.ReadFile(config.Maintenancefile)
 	if err != nil {
-		log.Printf("error <%v> at ioutil.ReadFile(), file = <%s>", err, config.Maintenancefile)
+		log.Printf("error <%v> at os.ReadFile(), file = <%s>", err, config.Maintenancefile)
 	}
 
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 	writer.WriteHeader(http.StatusServiceUnavailable)
-	writer.Write(content)
+	_, _ = writer.Write(content)
 }
 
 /*

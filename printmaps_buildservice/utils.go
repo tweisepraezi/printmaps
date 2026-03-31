@@ -1,10 +1,8 @@
-// utils and helper
-
 package main
 
 import (
-	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -60,20 +58,27 @@ nextBuildOrder returns the name of the oldest build order file.
 func nextBuildOrder() string {
 
 	path := filepath.Join(pd.PathWorkdir, pd.PathOrders)
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
-		log.Fatalf("fatal error <%v> at ioutil.ReadDir(), path = <%v>", err, path)
+		log.Fatalf("fatal error <%v> at os.ReadDir(), path = <%v>", err, path)
 	}
 
 	if len(files) == 0 {
 		return ""
 	}
 
-	sort.Slice(files, func(i, j int) bool { return files[i].ModTime().Unix() < files[j].ModTime().Unix() })
+	sort.Slice(files, func(i, j int) bool {
+		infoI, errI := files[i].Info()
+		infoJ, errJ := files[j].Info()
+		if errI != nil || errJ != nil {
+			return false
+		}
+		return infoI.ModTime().Unix() < infoJ.ModTime().Unix()
+	})
 
-	for _, fileInfo := range files {
-		if !fileInfo.IsDir() {
-			return fileInfo.Name()
+	for _, fileEntry := range files {
+		if !fileEntry.IsDir() {
+			return fileEntry.Name()
 		}
 	}
 

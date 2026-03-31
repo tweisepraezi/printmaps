@@ -23,7 +23,3 @@ Im Fehler- oder Problemfall sollte diese Datei eingesehen werden.
 
     ps -Af | grep "printmaps_"
     kill pid
-
----
-
-to be done - english translation

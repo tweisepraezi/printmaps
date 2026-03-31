@@ -19,7 +19,7 @@ import (
 /*
 fetchMetadata fetches the meta data for a given map ID.
 */
-func fetchMetadata(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+func fetchMetadata(writer http.ResponseWriter, _ *http.Request, params httprouter.Params) {
 	var pmErrorList pd.PrintmapsErrorList
 	var pmData pd.PrintmapsData
 
@@ -63,7 +63,7 @@ func fetchMetadata(writer http.ResponseWriter, request *http.Request, params htt
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusOK)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	} else {
 		// request not ok, response with error list
 		content, err := json.MarshalIndent(pmErrorList, pd.IndentPrefix, pd.IndexString)
@@ -77,14 +77,14 @@ func fetchMetadata(writer http.ResponseWriter, request *http.Request, params htt
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusBadRequest)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	}
 }
 
 /*
 fetchMapstate fetches the current state of the map creation process.
 */
-func fetchMapstate(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+func fetchMapstate(writer http.ResponseWriter, _ *http.Request, params httprouter.Params) {
 	var pmErrorList pd.PrintmapsErrorList
 	var pmState pd.PrintmapsState
 
@@ -128,7 +128,7 @@ func fetchMapstate(writer http.ResponseWriter, request *http.Request, params htt
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusOK)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	} else {
 		// request not ok, response with error list
 		content, err := json.MarshalIndent(pmErrorList, pd.IndentPrefix, pd.IndexString)
@@ -142,7 +142,7 @@ func fetchMapstate(writer http.ResponseWriter, request *http.Request, params htt
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusBadRequest)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	}
 }
 
@@ -197,11 +197,12 @@ func fetchMapfile(writer http.ResponseWriter, request *http.Request, params http
 
 	if len(pmErrorList.Errors) == 0 {
 		// verify state
-		if pmState.Data.Attributes.MapOrderSubmitted == "" {
+		switch {
+		case pmState.Data.Attributes.MapOrderSubmitted == "":
 			appendError(&pmErrorList, "6001", "please submit map build order first", id)
-		} else if pmState.Data.Attributes.MapBuildStarted == "" {
+		case pmState.Data.Attributes.MapBuildStarted == "":
 			appendError(&pmErrorList, "6002", "please repeat download request later", id)
-		} else if pmState.Data.Attributes.MapBuildCompleted == "" {
+		case pmState.Data.Attributes.MapBuildCompleted == "":
 			appendError(&pmErrorList, "6003", "please repeat download request later", id)
 		}
 	}
@@ -231,14 +232,14 @@ func fetchMapfile(writer http.ResponseWriter, request *http.Request, params http
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusBadRequest)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	}
 }
 
 /*
 fetchUIData fetches the UI data (stored as file) for a given map ID.
 */
-func fetchUIData(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+func fetchUIData(writer http.ResponseWriter, _ *http.Request, params httprouter.Params) {
 	var pmErrorList pd.PrintmapsErrorList
 	var data []byte
 	var err error
@@ -276,7 +277,7 @@ func fetchUIData(writer http.ResponseWriter, request *http.Request, params httpr
 		writer.Header().Set("Content-Type", "application/octet-stream")
 		writer.Header().Set("Content-Length", strconv.Itoa(len(data)))
 		writer.WriteHeader(http.StatusOK)
-		writer.Write(data)
+		_, _ = writer.Write(data)
 	} else {
 		// request not ok, response with error list
 		content, err := json.MarshalIndent(pmErrorList, pd.IndentPrefix, pd.IndexString)
@@ -290,7 +291,7 @@ func fetchUIData(writer http.ResponseWriter, request *http.Request, params httpr
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusBadRequest)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	}
 }
 

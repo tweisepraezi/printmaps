@@ -5,7 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -29,9 +29,9 @@ func updateMetadata(writer http.ResponseWriter, request *http.Request, _ httprou
 	verifyContentType(request, &pmErrorList)
 	verifyAccept(request, &pmErrorList)
 
-	bodyBytes, err := ioutil.ReadAll(request.Body)
+	bodyBytes, err := io.ReadAll(request.Body)
 	if err != nil {
-		message := fmt.Sprintf("error <%v> at ioutil.ReadAll()", err)
+		message := fmt.Sprintf("error <%v> at io.ReadAll()", err)
 		http.Error(writer, message, http.StatusInternalServerError)
 		log.Printf("Response %d - %s", http.StatusInternalServerError, message)
 		return
@@ -115,7 +115,7 @@ func updateMetadata(writer http.ResponseWriter, request *http.Request, _ httprou
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusOK)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	} else {
 		// request not ok, response with error list
 		content, err := json.MarshalIndent(pmErrorList, pd.IndentPrefix, pd.IndexString)
@@ -129,6 +129,6 @@ func updateMetadata(writer http.ResponseWriter, request *http.Request, _ httprou
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusBadRequest)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	}
 }

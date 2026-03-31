@@ -1,4 +1,6 @@
 # ignore special MacOS files
 .DS_Store
+
 # ignore directories
 build/
+uploads/

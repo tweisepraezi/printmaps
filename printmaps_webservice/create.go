@@ -77,7 +77,7 @@ func createMetadata(writer http.ResponseWriter, request *http.Request, _ httprou
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusCreated)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	} else {
 		// request not ok, response with error list
 		content, err := json.MarshalIndent(pmErrorList, pd.IndentPrefix, pd.IndexString)
@@ -91,7 +91,7 @@ func createMetadata(writer http.ResponseWriter, request *http.Request, _ httprou
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusBadRequest)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	}
 }
 
@@ -193,7 +193,7 @@ func createMapfile(writer http.ResponseWriter, request *http.Request, _ httprout
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusAccepted)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	} else {
 		// request not ok, response with error list
 		content, err := json.MarshalIndent(pmErrorList, pd.IndentPrefix, pd.IndexString)
@@ -207,6 +207,6 @@ func createMapfile(writer http.ResponseWriter, request *http.Request, _ httprout
 		writer.Header().Set("Content-Type", pd.JSONAPIMediaType)
 		writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		writer.WriteHeader(http.StatusBadRequest)
-		writer.Write(content)
+		_, _ = writer.Write(content)
 	}
 }
